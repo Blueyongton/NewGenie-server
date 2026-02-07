@@ -72,38 +72,45 @@ export class NewsService {
             explanations: sentenceDetails,
         };
     }
-
+    
     // 문장별 용어 추출 및 저장
     private async extractTermsForSentences(
         articlesId: number,
         sentences: ArticleSentenceContent[],
     ): Promise<ArticleSentence[]> {
-        const savedSentences: ArticleSentence[] = [];
+        const startTime = Date.now();
+        console.log(`[용어 추출 시작] 문장 개수: ${sentences.length}개`);
 
-        for (const sentence of sentences) {
-            // LLM으로 용어 추출
-            let explanations: TermExplanation[] = [];
+        // Promise.all로 모든 문장을 동시에 처리
+        const savedSentences = await Promise.all(
+            sentences.map(async (sentence) => {
+                // LLM으로 용어 추출
+                let explanations: TermExplanation[] = [];
+                try {
+                    explanations = await this.llmService.invokeJson<TermExplanation[]>(
+                        ANALYZE_PROMPT.EXTRACT_TERMS,
+                        sentence.p
+                    );
+                } catch (error) {
+                    console.error(`용어 추출 실패 (sentenceId: ${sentence.id}):`, error);
+                    explanations = []
+                }
 
-            try {
-                explanations = await this.llmService.invokeJson<TermExplanation[]>(
-                    ANALYZE_PROMPT.EXTRACT_TERMS,
-                    sentence.p
-                );
-            } catch (error) {
-                console.error(`용어 추출 실패 (sentenceId: ${sentence.id}):`, error);
-                explanations = []
-            }
+                // ArticleSentence 저장
+                const articleSentence = this.articleSentenceRepository.create({
+                    articlesId,
+                    sentenceId: sentence.id,
+                    explanations,
+                })
 
-            // ArticleSentence 저장
-            const articleSentence = this.articleSentenceRepository.create({
-                articlesId,
-                sentenceId: sentence.id,
-                explanations,
+                return this.articleSentenceRepository.save(articleSentence)
             })
+        )
 
-            const saved = await this.articleSentenceRepository.save(articleSentence);
-            savedSentences.push(saved);
-        }
+        const endTime = Date.now();
+        const elapsedTime = ((endTime - startTime) / 1000).toFixed(2);
+        console.log(`[용어 추출 완료] 소요 시간: ${elapsedTime}초`);
+
         return savedSentences;
     }
 

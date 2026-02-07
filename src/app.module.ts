@@ -39,7 +39,7 @@ import { LlmModule } from './common/llm/llm.module';
                 database: configService.get('DB_DATABASE'),
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: configService.get('DB_SYNCHRONIZE'),
-                logging: true, // 개발 중 SQL 로그 확인용
+                logging: false, // 개발 중 SQL 로그 확인용
             }),
             inject: [ConfigService],
         }),
