@@ -23,7 +23,9 @@ import { LlmModule } from './common/llm/llm.module';
                 DB_DATABASE: Joi.string().required(),
                 DB_SYNCHRONIZE: Joi.boolean().default(false),
                 OPENROUTER_API_KEY: Joi.string().required(),
-                OPENROUTER_MODEL: Joi.string().required().default('openai/gpt-oss-120b'),
+                OPENROUTER_MODEL: Joi.string()
+                    .required()
+                    .default('openai/gpt-oss-120b'),
             }),
         }),
         TypeOrmModule.forRootAsync({
@@ -37,7 +39,7 @@ import { LlmModule } from './common/llm/llm.module';
                 database: configService.get('DB_DATABASE'),
                 entities: [__dirname + '/**/*.entity{.ts,.js}'],
                 synchronize: configService.get('DB_SYNCHRONIZE'),
-                logging: true, // 개발 중 SQL 로그 확인용
+                logging: false, // 개발 중 SQL 로그 확인용
             }),
             inject: [ConfigService],
         }),
