@@ -1,9 +1,14 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { KakaoLoginDto } from './dto/kakao-login.dto';
 import { AuthResponseDto } from './dto/auth-response.dto';
+import { CreateGoalDto } from './dto/create-goal.dto';
+import { GoalResponseDto } from './dto/goal-response.dto';
+import { Goal } from './entities/goal.entity';
 import {
     KakaoUserInfo,
     KakaoTokenResponse,
@@ -16,6 +21,8 @@ export class AuthService {
         private readonly usersService: UsersService,
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
+        @InjectRepository(Goal)
+        private readonly goalsRepository: Repository<Goal>,
     ) {}
 
     // 타입 가드 함수
@@ -157,5 +164,24 @@ export class AuthService {
         } catch {
             throw new UnauthorizedException('카카오 사용자 정보 조회 실패');
         }
+    }
+
+    async createGoal(
+        userId: string,
+        createGoalDto: CreateGoalDto,
+    ): Promise<GoalResponseDto> {
+        const goal = this.goalsRepository.create({
+            user_id: userId,
+            domain: createGoalDto.domain,
+            numbers: createGoalDto.numbers,
+        });
+
+        const savedGoal = await this.goalsRepository.save(goal);
+
+        return new GoalResponseDto({
+            id: savedGoal.id,
+            domain: savedGoal.domain,
+            numbers: savedGoal.numbers,
+        });
     }
 }

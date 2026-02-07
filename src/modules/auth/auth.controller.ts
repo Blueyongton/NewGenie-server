@@ -1,14 +1,25 @@
-import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import {
+    Controller,
+    Post,
+    Body,
+    Get,
+    Query,
+    UseGuards,
+    Request,
+} from '@nestjs/common';
 import {
     ApiTags,
     ApiOperation,
     ApiResponse,
     ApiBody,
     ApiQuery,
+    ApiBearerAuth,
 } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { KakaoLoginDto } from './dto/kakao-login.dto';
+import { CreateGoalDto } from './dto/create-goal.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('인증')
 @Controller('auth')
@@ -114,5 +125,49 @@ export class AuthController {
             authorizationCode: code,
             redirectUri: redirectUri,
         });
+    }
+
+    @Post('goals')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('access-token')
+    @ApiOperation({
+        summary: '목표 생성',
+        description: '인증된 사용자의 목표를 생성합니다.',
+    })
+    @ApiBody({ type: CreateGoalDto })
+    @ApiResponse({
+        status: 201,
+        description: '목표 생성 성공',
+        schema: {
+            example: {
+                resultType: 'SUCCESS',
+                success: {
+                    data: {
+                        id: '23',
+                        domain: 'Politics',
+                        numbers: 3,
+                    },
+                },
+                error: null,
+                meta: {
+                    timestamp: '2026-01-03T09:12:34.567Z',
+                    path: '/auth/goals',
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 401,
+        description: '인증되지 않음',
+    })
+    @ApiResponse({
+        status: 400,
+        description: '잘못된 요청',
+    })
+    async createGoal(
+        @Body() createGoalDto: CreateGoalDto,
+        @Request() req: { user: { id: string } },
+    ) {
+        return await this.authService.createGoal(req.user.id, createGoalDto);
     }
 }
