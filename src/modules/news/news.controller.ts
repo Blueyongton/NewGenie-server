@@ -15,17 +15,9 @@ import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags, ApiBearerAuth }
 export class NewsController {
     constructor(private readonly newsService: NewsService) {}
 
-    @Post()
+    @Post('analyze')
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth('access-token')
-    @ApiOperation({ summary: '뉴스 생성' })
-    @ApiResponse({ status: 201, description: '뉴스가 생성되었습니다.' })
-    @ApiResponse({ status: 401, description: '인증되지 않음' })
-    create(@Body() createNewsDto: CreateNewsDto) {
-        return this.newsService.create(createNewsDto.title);
-    }
-
-    @Post('analyze')
     @ApiOperation({ summary: '뉴스 기사 분석' })
     @ApiResponse({
         status: 200,

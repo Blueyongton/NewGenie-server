@@ -2,9 +2,9 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Quiz } from './entities/quiz.entity';
 import { Repository } from 'typeorm';
-import { GoalArticle } from '../news/entities/goal-article.entity';
+import { GoalArticle, GoalArticleStatus } from '../news/entities/goal-article.entity';
 import { LlmService } from 'src/common/llm/llm.service';
-import { GenerateQuizResponseDto, QuizLlmResponse } from './dtos/quiz.dto';
+import { GenerateQuizResponseDto, QuizLlmResponse, SubmitQuizResponseDto } from './dtos/quiz.dto';
 import { QUIZ_PROMPT } from 'src/common/prompts/quiz.prompt';
 
 @Injectable()
@@ -16,6 +16,38 @@ export class QuizService {
         private goalArticleRepository: Repository<GoalArticle>,
         private llmService: LlmService
     ) {}
+
+    async submitQuiz(articleId: number, userAnswer: boolean): Promise<SubmitQuizResponseDto> {
+        // 1. 퀴즈 조회
+        const quiz = await this.quizRepository.findOne({
+            where: { articleId },
+        })
+
+        if (!quiz) {
+            throw new NotFoundException(`퀴즈를 찾을 수 없습니다. (articleId: ${articleId})`);
+        }
+
+        // 2. 채점
+        const isCorrect = quiz.answer === userAnswer;
+
+        // 3. goal_articles 상태 업데이트
+        const newStatus = isCorrect ? GoalArticleStatus.CORRECT : GoalArticleStatus.WRONG;
+
+        await this.goalArticleRepository.update(
+            { id: articleId },
+            { status: newStatus }
+        )
+
+        console.log(`[퀴즈 채점] articleId: ${articleId}, 정답: ${isCorrect}, 상태: ${newStatus}`);
+
+        // 4. 응답 반환
+        return {
+            isCorrect,
+            correctAnswer: quiz.answer,
+            description: quiz.description,
+            articleStatus: newStatus,
+        };
+    }   
 
     async generateQuiz(articleId: number): Promise<GenerateQuizResponseDto> {
         // 1. 기존 퀴즈 확인 -> 있으면 기존 퀴즈 반환
