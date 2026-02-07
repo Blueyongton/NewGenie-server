@@ -8,6 +8,7 @@ import { NewsModule } from './modules/news/news.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as Joi from 'joi';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { LlmModule } from './common/llm/llm.module';
 
 @Module({
     imports: [
@@ -21,6 +22,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
                 DB_PASSWORD: Joi.string().required(),
                 DB_DATABASE: Joi.string().required(),
                 DB_SYNCHRONIZE: Joi.boolean().default(false),
+                OPENROUTER_API_KEY: Joi.string().required(),
+                OPENROUTER_MODEL: Joi.string().required().default('openai/gpt-oss-120b'),
             }),
         }),
         TypeOrmModule.forRootAsync({
@@ -38,6 +41,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
             }),
             inject: [ConfigService],
         }),
+        LlmModule, // Global 모듈 - 다른 모듈보다 먼저 import
         AuthModule,
         QuizModule,
         UsersModule,
