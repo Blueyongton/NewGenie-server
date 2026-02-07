@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { ArticleSentence as ArticleSentenceEntity } from './article-sentence.entity';
 
 export enum GoalArticleStatus {
     WRONG = 'WRONG',
@@ -28,9 +29,13 @@ export class GoalArticle {
         default: GoalArticleStatus.NOREAD,
     })
     status: GoalArticleStatus;
+
     @Column({
         type: 'jsonb',
         default: [],
     })
     contents: ArticleSentence[];
+
+    @OneToMany(() => ArticleSentenceEntity, (sentence) => sentence.article)
+    sentences: ArticleSentenceEntity[];
 }
