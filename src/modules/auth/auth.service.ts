@@ -9,6 +9,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import { CreateGoalDto } from './dto/create-goal.dto';
 import { GoalResponseDto } from './dto/goal-response.dto';
 import { Goal } from './entities/goal.entity';
+import { NewGenie } from '../auth/entities/newgenie.entity';
 import {
     KakaoUserInfo,
     KakaoTokenResponse,
@@ -23,6 +24,8 @@ export class AuthService {
         private readonly configService: ConfigService,
         @InjectRepository(Goal)
         private readonly goalsRepository: Repository<Goal>,
+        @InjectRepository(NewGenie)
+        private readonly newGenieRepository: Repository<NewGenie>,
     ) {}
 
     // 타입 가드 함수
@@ -170,6 +173,7 @@ export class AuthService {
         userId: string,
         createGoalDto: CreateGoalDto,
     ): Promise<GoalResponseDto> {
+        // Goal 생성
         const goal = this.goalsRepository.create({
             user_id: userId,
             domain: createGoalDto.domain,
@@ -177,6 +181,22 @@ export class AuthService {
         });
 
         const savedGoal = await this.goalsRepository.save(goal);
+
+        // NewGenie 생성 (이미 존재하면 무시)
+        const existingNewGenie = await this.newGenieRepository.findOne({
+            where: { user_id: userId },
+        });
+
+        if (!existingNewGenie) {
+            const newGenie = this.newGenieRepository.create({
+                user_id: userId,
+                level: 1, // 초기 레벨 1
+                status: true, // 초기 상태 true (활성)
+                values: 0, // 초기 값 0
+            });
+
+            await this.newGenieRepository.save(newGenie);
+        }
 
         return new GoalResponseDto({
             id: savedGoal.id,
