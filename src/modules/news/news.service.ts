@@ -10,7 +10,7 @@ import { News } from './entities/news.entity';
 import { Repository } from 'typeorm';
 import { LlmService } from 'src/common/llm/llm.service';
 import { ANALYZE_PROMPT } from 'src/common/prompts/analyze.prompt';
-import { AnalyzeNewsResponseDto, SentenceDetailResponseDto } from './dtos/news.dto';
+import { AnalyzeNewsResponseDto, GetArticleResponseDto, SentenceDetailResponseDto } from './dtos/news.dto';
 import { ArticleSentence as ArticleSentenceContent, GoalArticle } from './entities/goal-article.entity';
 import { ArticleSentence, TermExplanation } from './entities/article-sentence.entity';
 
@@ -110,6 +110,24 @@ export class NewsService {
             sentenceId: sentence.sentenceId,
             explanations: sentence.explanations,
             hasDetailedExplanations: !this.hasNullDetailedExplain(sentence.explanations),
+        };
+    }
+
+    async getArticle(articleId: number): Promise<GetArticleResponseDto> {
+        const article = await this.goalArticleRepository.findOne({
+            where: { id: articleId },
+        });
+
+        if (!article) {
+            throw new NotFoundException(`기사를 찾을 수 없습니다. (id: ${articleId})`);
+        }
+        
+        return {
+            id: article.id,
+            title: article.title,
+            article_url: article.article_url,
+            status: article.status,
+            contents: article.contents,
         };
     }
     
