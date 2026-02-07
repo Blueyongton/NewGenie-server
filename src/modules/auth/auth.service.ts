@@ -7,6 +7,7 @@ import { AuthResponseDto } from './dto/auth-response.dto';
 import {
     KakaoUserInfo,
     KakaoTokenResponse,
+    KakaoErrorResponse,
 } from './interfaces/kakao-user.interface';
 
 @Injectable()
@@ -16,6 +17,16 @@ export class AuthService {
         private readonly jwtService: JwtService,
         private readonly configService: ConfigService,
     ) {}
+
+    // 타입 가드 함수
+    private isKakaoErrorResponse(obj: unknown): obj is KakaoErrorResponse {
+        return (
+            typeof obj === 'object' &&
+            obj !== null &&
+            'error' in obj &&
+            typeof (obj as Record<string, unknown>).error === 'string'
+        );
+    }
 
     async kakaoLogin(kakaoLoginDto: KakaoLoginDto): Promise<AuthResponseDto> {
         // 1. 카카오 액세스 토큰 받기
@@ -101,11 +112,16 @@ export class AuthService {
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
+                const errorData: unknown = await response.json();
                 console.error('카카오 토큰 발급 실패:', errorData);
-                throw new UnauthorizedException(
-                    `카카오 토큰 발급 실패: ${errorData.error_description || errorData.error}`,
-                );
+
+                if (this.isKakaoErrorResponse(errorData)) {
+                    throw new UnauthorizedException(
+                        `카카오 토큰 발급 실패: ${errorData.error_description ?? errorData.error}`,
+                    );
+                }
+
+                throw new UnauthorizedException('카카오 토큰 발급 실패');
             }
 
             const data = (await response.json()) as KakaoTokenResponse;

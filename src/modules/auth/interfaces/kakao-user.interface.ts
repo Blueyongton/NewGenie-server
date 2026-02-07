@@ -13,3 +13,9 @@ export interface KakaoTokenResponse {
     scope: string;
     refresh_token_expires_in: number;
 }
+
+export interface KakaoErrorResponse {
+    error: string;
+    error_description?: string;
+    error_code?: string;
+}
