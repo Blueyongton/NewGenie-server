@@ -1,7 +1,7 @@
-import { Controller, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { QuizService } from './quiz.service';
 import { ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
-import { GenerateQuizResponseDto } from './dtos/quiz.dto';
+import { GenerateQuizResponseDto, SubmitQuizRequestDto, SubmitQuizResponseDto } from './dtos/quiz.dto';
 
 @Controller('quiz')
 export class QuizController {
@@ -31,5 +31,32 @@ export class QuizController {
         @Param('articleId', ParseIntPipe) articleId: number,
     ): Promise<GenerateQuizResponseDto> {
         return this.quizService.generateQuiz(articleId);
+    }
+
+    @Post(':articleId/submit')
+    @ApiOperation({
+        summary: '퀴즈 답안 제출',
+        description: '사용자의 O/X 답안을 제출하고 채점합니다. 결과에 따라 기사 상태가 업데이트됩니다.',
+    })
+    @ApiParam({
+        name: 'articleId',
+        description: '기사 ID',
+        type: Number,
+        example: 1,
+    })
+    @ApiResponse({
+        status: 200,
+        description: '채점 완료',
+        type: SubmitQuizResponseDto,
+    })
+    @ApiResponse({
+        status: 404,
+        description: '퀴즈를 찾을 수 없음',
+    })
+    async submit(
+        @Param('articleId', ParseIntPipe) articleId: number,
+        @Body() dto: SubmitQuizRequestDto,
+    ): Promise<SubmitQuizResponseDto> {
+        return this.quizService.submitQuiz(articleId, dto.answer);
     }
 }
