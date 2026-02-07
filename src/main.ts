@@ -27,6 +27,17 @@ async function bootstrap() {
         .setTitle('NewGenie API')
         .setDescription('NewGenie API 문서')
         .setVersion('1.0')
+        .addBearerAuth(
+            {
+                type: 'http',
+                scheme: 'bearer',
+                bearerFormat: 'JWT',
+                name: 'Authorization',
+                description: 'JWT 액세스 토큰을 입력하세요',
+                in: 'header',
+            },
+            'access-token', // 이 이름을 컨트롤러에서 참조
+        )
         .build();
 
     const document = SwaggerModule.createDocument(app, config);
