@@ -3,6 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Quiz } from './entities/quiz.entity';
 import { NewGenie } from './entities/newgenie.entity';
+import { GoalArticle, GoalArticleStatus } from './entities/goal-article.entity';
+import { GoalLog } from './entities/goal-log.entity';
+import { Goal } from './entities/goal.entity';
 import { QuizResponseDto } from './dtos/quiz-response.dto';
 import { SubmitAnswerDto } from './dtos/submit-answer.dto';
 import { QuizResultResponseDto } from './dtos/quiz-result-response.dto';
@@ -14,6 +17,12 @@ export class QuizService {
         private readonly quizRepository: Repository<Quiz>,
         @InjectRepository(NewGenie)
         private readonly newGenieRepository: Repository<NewGenie>,
+        @InjectRepository(GoalArticle)
+        private readonly goalArticleRepository: Repository<GoalArticle>,
+        @InjectRepository(GoalLog)
+        private readonly goalLogRepository: Repository<GoalLog>,
+        @InjectRepository(Goal)
+        private readonly goalRepository: Repository<Goal>,
     ) {}
 
     async findByArticleId(articleId: string): Promise<QuizResponseDto> {
@@ -50,6 +59,70 @@ export class QuizService {
 
         // 2. 정답 비교
         const isCorrect = quiz.answer === submitAnswerDto.answer;
+
+        // 정답일 경우 goal_article의 status를 COMPLETED로 변경
+        if (isCorrect) {
+            // 해당 article_id로 goal_article 조회
+            const goalArticle = await this.goalArticleRepository.findOne({
+                where: { article_url: articleId }, // article_url에 articleId가 저장되어 있다고 가정
+            });
+
+            if (goalArticle) {
+                // goal_article의 status를 COMPLETED로 변경
+                goalArticle.status = GoalArticleStatus.CORRECT;
+                await this.goalArticleRepository.save(goalArticle);
+
+                const logId = goalArticle.log_id;
+
+                // 해당 log_id와 동일한 log_id를 가지며, status가 COMPLETED인 goal_article 개수 조회
+                const completedCount = await this.goalArticleRepository.count({
+                    where: {
+                        log_id: logId,
+                        status: GoalArticleStatus.CORRECT,
+                    },
+                });
+
+                // user의 goal 조회
+                const userGoal = await this.goalRepository.findOne({
+                    where: { user_id: userId },
+                });
+
+                if (userGoal && completedCount >= userGoal.numbers) {
+                    // goal.numbers와 같으면 goal_log의 status를 true로 변경
+                    await this.goalLogRepository.update(
+                        { id: logId },
+                        { status: true },
+                    );
+
+                    // user의 newgenie status를 true로 변경
+                    await this.newGenieRepository.update(
+                        { user_id: userId },
+                        { status: true },
+                    );
+                }
+            }
+
+            // newgenie의 values를 1 증가시키고 레벨 업데이트
+            const userNewGenie = await this.newGenieRepository.findOne({
+                where: { user_id: userId },
+            });
+
+            if (userNewGenie) {
+                // values 1 증가
+                userNewGenie.values += 1;
+
+                // values에 따라 레벨 업데이트
+                if (userNewGenie.values > 200) {
+                    userNewGenie.level = 3;
+                } else if (userNewGenie.values > 100) {
+                    userNewGenie.level = 2;
+                } else {
+                    userNewGenie.level = 1;
+                }
+
+                await this.newGenieRepository.save(userNewGenie);
+            }
+        }
 
         // 3. NewGenie 정보 조회
         const newGenie = await this.newGenieRepository.findOne({

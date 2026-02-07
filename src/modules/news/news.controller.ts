@@ -6,10 +6,12 @@ import {
     ApiResponse,
 } from '@nestjs/swagger';
 import { NewsService } from './news.service';
-import { CreateNewsDto } from './dtos/news.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AnalyzeNewsDto, AnalyzeNewsResponseDto, CreateNewsDto } from './dtos/news.dto';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+    AnalyzeNewsDto,
+    AnalyzeNewsResponseDto,
+    CreateNewsDto,
+} from './dtos/news.dto';
 
 @ApiTags('뉴스')
 @Controller('news')
@@ -28,7 +30,11 @@ export class NewsController {
 
     @Post('analyze')
     @ApiOperation({ summary: '뉴스 기사 분석' })
-    @ApiResponse({ status: 200, description: '분석 결과', type: AnalyzeNewsResponseDto })
+    @ApiResponse({
+        status: 200,
+        description: '분석 결과',
+        type: AnalyzeNewsResponseDto,
+    })
     async analyze(@Body() analyzeNewsDto: AnalyzeNewsDto) {
         const analysis = await this.newsService.analyze(analyzeNewsDto.content);
         return { analysis };
