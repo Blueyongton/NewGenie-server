@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
 import { NewsService } from './news.service';
 import {
     AnalyzeNewsDto,
@@ -6,14 +6,20 @@ import {
     CreateNewsDto,
     SentenceDetailResponseDto,
 } from './dtos/news.dto';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
-@ApiTags('news')
+@ApiTags('뉴스')
 @Controller('news')
 export class NewsController {
     constructor(private readonly newsService: NewsService) {}
 
     @Post()
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('access-token')
+    @ApiOperation({ summary: '뉴스 생성' })
+    @ApiResponse({ status: 201, description: '뉴스가 생성되었습니다.' })
+    @ApiResponse({ status: 401, description: '인증되지 않음' })
     create(@Body() createNewsDto: CreateNewsDto) {
         return this.newsService.create(createNewsDto.title);
     }

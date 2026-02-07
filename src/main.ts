@@ -2,9 +2,17 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
+import { ResponseInterceptor } from './Interceptors/response/response.interceptor';
+import { HttpExceptionFilter } from './Interceptors/filters/http-error/http-error.filter';
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
+
+    // 전역 Exception Filter 설정
+    app.useGlobalFilters(new HttpExceptionFilter());
+
+    // 전역 Interceptor 설정
+    app.useGlobalInterceptors(new ResponseInterceptor());
 
     // 전역 ValidationPipe 설정
     app.useGlobalPipes(
@@ -19,6 +27,17 @@ async function bootstrap() {
         .setTitle('NewGenie API')
         .setDescription('NewGenie API 문서')
         .setVersion('1.0')
+        .addBearerAuth(
+            {
+                type: 'http',
+                scheme: 'bearer',
+                bearerFormat: 'JWT',
+                name: 'Authorization',
+                description: 'JWT 액세스 토큰을 입력하세요',
+                in: 'header',
+            },
+            'access-token', // 이 이름을 컨트롤러에서 참조
+        )
         .build();
 
     const document = SwaggerModule.createDocument(app, config);
@@ -26,4 +45,4 @@ async function bootstrap() {
 
     await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+void bootstrap();
