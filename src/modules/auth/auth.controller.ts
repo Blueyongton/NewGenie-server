@@ -82,11 +82,12 @@ export class AuthController {
             '카카오 OAuth 인증 후 자동으로 호출되는 콜백 엔드포인트입니다.\n\n' +
             '사용 방법:\n' +
             '1. 다음 URL로 사용자를 리다이렉트:\n' +
-            '   https://kauth.kakao.com/oauth/authorize?client_id={CLIENT_ID}&redirect_uri=http://localhost:3000/auth/kakao/login/callback&response_type=code\n' +
+            '   https://kauth.kakao.com/oauth/authorize?client_id={CLIENT_ID}&redirect_uri={FRONTEND_CALLBACK_URL}&response_type=code\n' +
             '2. 사용자가 카카오 로그인 완료\n' +
-            '3. 카카오가 자동으로 이 엔드포인트를 호출하여 인가 코드 전달\n' +
-            '4. 백엔드가 JWT 액세스 토큰을 생성하여 반환\n\n' +
-            '⚠️ 이 엔드포인트는 브라우저 리다이렉트를 통해 자동으로 호출됩니다. Swagger UI에서 직접 테스트하지 마세요.',
+            '3. 카카오가 프론트엔드로 code 전달\n' +
+            '4. 프론트엔드가 이 엔드포인트를 호출 (code와 redirect_uri 전달)\n' +
+            '5. 백엔드가 JWT 액세스 토큰을 생성하여 반환\n\n' +
+            '⚠️ redirect_uri는 카카오 로그인 시 사용한 값과 동일해야 합니다.',
     })
     @ApiQuery({
         name: 'code',
@@ -94,6 +95,14 @@ export class AuthController {
         required: true,
         type: String,
         example: 'aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890',
+    })
+    @ApiQuery({
+        name: 'redirect_uri',
+        description:
+            '카카오 로그인 시 사용한 redirect_uri (선택, 없으면 BASE_URL 사용)',
+        required: false,
+        type: String,
+        example: 'https://프론트엔드주소/callback',
     })
     @ApiResponse({
         status: 200,
@@ -117,13 +126,18 @@ export class AuthController {
         status: 401,
         description: '인증 실패 - 인가 코드가 만료되었거나 잘못되었습니다',
     })
-    async kakaoLoginCallback(@Query('code') code: string) {
-        // 카카오에서 리다이렉트한 URL의 redirectUri를 사용
-        const redirectUri = `${this.configService.get<string>('BASE_URL') || 'http://localhost:3000'}/auth/kakao/login/callback`;
+    async kakaoLoginCallback(
+        @Query('code') code: string,
+        @Query('redirect_uri') redirectUri?: string,
+    ) {
+        // 프론트엔드가 전달한 redirect_uri 우선 사용, 없으면 백엔드 기본값
+        const finalRedirectUri =
+            redirectUri ||
+            `${this.configService.get<string>('BASE_URL')}/auth/kakao/login/callback`;
 
         return await this.authService.kakaoLogin({
             authorizationCode: code,
-            redirectUri: redirectUri,
+            redirectUri: finalRedirectUri,
         });
     }
 
