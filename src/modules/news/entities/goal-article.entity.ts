@@ -1,5 +1,6 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { ArticleSentence as ArticleSentenceEntity } from './article-sentence.entity';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 export enum GoalArticleStatus {
     WRONG = 'WRONG',
@@ -13,7 +14,7 @@ export interface ArticleSentence {
 }
 
 @Entity('goal_articles')
-export class GoalArticle {
+export class GoalArticle extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
 

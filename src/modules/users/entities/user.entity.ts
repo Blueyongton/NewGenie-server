@@ -2,11 +2,11 @@ import {
     Entity,
     Column,
     PrimaryGeneratedColumn,
-    CreateDateColumn,
 } from 'typeorm';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 @Entity('User')
-export class User {
+export class User extends BaseEntity {
     @PrimaryGeneratedColumn({ type: 'bigint' })
     id: number;
 
@@ -16,6 +16,4 @@ export class User {
     @Column({ type: 'varchar' })
     nickname: string;
 
-    @CreateDateColumn({ type: 'timestamp', precision: 6 })
-    created_at: Date;
 }

@@ -1,8 +1,9 @@
 import { GoalArticle } from "src/modules/news/entities/goal-article.entity";
 import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { BaseEntity } from "src/common/entities/base.entity";
 
 @Entity('quiz')
-export class Quiz {
+export class Quiz extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
 

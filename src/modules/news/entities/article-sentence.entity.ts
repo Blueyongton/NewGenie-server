@@ -1,5 +1,6 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique } from "typeorm";
 import { GoalArticle } from "./goal-article.entity";
+import { BaseEntity } from "src/common/entities/base.entity";
 
 export type ExplanationType = 'person' | 'company' | 'domain_terms';
 
@@ -12,7 +13,7 @@ export interface TermExplanation {
 
 @Entity('article_sentences')
 @Unique(['article', 'sentenceId'])
-export class ArticleSentence {
+export class ArticleSentence extends BaseEntity {
     @PrimaryGeneratedColumn()
     id: number;
 
