@@ -29,4 +29,22 @@ export class LlmService {
         ]);
         return response.content as string;
     }
+
+    async invokeJson<T>(systemPrompt: string, userMessage: string): Promise<T> {
+        const response = await this.invoke(systemPrompt, userMessage);
+
+        // JSON 블록 추출
+        let jsonStr = response.trim();
+        if (jsonStr.startsWith('```json')) {
+            jsonStr = jsonStr.slice(7);
+        }
+        if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.slice(3);
+        }
+        if (jsonStr.endsWith('```')) {
+            jsonStr = jsonStr.slice(0, -3);
+        }
+
+        return JSON.parse(jsonStr.trim()) as T;
+    }
 }

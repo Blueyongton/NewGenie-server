@@ -13,15 +13,27 @@ export class CreateNewsDto {
 
 export class AnalyzeNewsDto {
     @ApiProperty({
-        description: '분석할 뉴스 본문',
-        example: '오늘 한국은행이 기준금리를 0.25%p 인상했다...',
+        description: '분석할 뉴스 기사 URL',
+        example: 'https://www.example.com/news/123',
     })
     @IsString()
     @IsNotEmpty()
-    content: string;
+    article_url: string;
+}
+
+export class SentenceDto {
+    @ApiProperty({ description: '문장 ID (0=제목)', example: 0 })
+    id: number;
+
+    @ApiProperty({ description: '문장 내용', example: '이것은 제목입니다.' })
+    p: string;
 }
 
 export class AnalyzeNewsResponseDto {
-    @ApiProperty({ description: 'LLM 분석 결과' })
-    analysis: string;
+    @ApiProperty({ description: '저장된 Goal Article ID' })
+    articleId: number;
+    @ApiProperty({ description: '기사 제목' })
+    title: string;
+    @ApiProperty({ description: '추출된 문장 배열', type: [SentenceDto] })
+    sentences: SentenceDto[];
 }
