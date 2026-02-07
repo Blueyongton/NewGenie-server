@@ -21,7 +21,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build application
         run: npm run build
@@ -41,7 +41,7 @@ jobs:
             git pull origin main
             
             # 의존성 설치
-            npm ci
+            npm install
             
             # 애플리케이션 빌드
             npm run build
