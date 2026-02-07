@@ -6,7 +6,9 @@ import {
     Query,
     UseGuards,
     Request,
+    Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import {
     ApiTags,
     ApiOperation,
@@ -81,13 +83,15 @@ export class AuthController {
         description:
             '카카오 OAuth 인증 후 자동으로 호출되는 콜백 엔드포인트입니다.\n\n' +
             '사용 방법:\n' +
-            '1. 다음 URL로 사용자를 리다이렉트:\n' +
-            '   https://kauth.kakao.com/oauth/authorize?client_id={CLIENT_ID}&redirect_uri={FRONTEND_CALLBACK_URL}&response_type=code\n' +
+            '1. 프론트엔드에서 다음 URL로 사용자를 리다이렉트:\n' +
+            '   https://kauth.kakao.com/oauth/authorize?client_id={CLIENT_ID}&redirect_uri={BACKEND_CALLBACK_URL}&response_type=code\n' +
+            '   (redirect_uri는 이 엔드포인트 URL로 설정)\n' +
             '2. 사용자가 카카오 로그인 완료\n' +
-            '3. 카카오가 프론트엔드로 code 전달\n' +
-            '4. 프론트엔드가 이 엔드포인트를 호출 (code와 redirect_uri 전달)\n' +
-            '5. 백엔드가 JWT 액세스 토큰을 생성하여 반환\n\n' +
-            '⚠️ redirect_uri는 카카오 로그인 시 사용한 값과 동일해야 합니다.',
+            '3. 카카오가 이 엔드포인트를 호출 (code 전달)\n' +
+            '4. 백엔드가 JWT 액세스 토큰을 생성\n' +
+            '5. 프론트엔드로 리다이렉트 (토큰을 URL 프래그먼트에 포함)\n\n' +
+            '⚠️ 프론트엔드는 리다이렉트된 URL의 #token 파라미터에서 JWT를 추출해야 합니다.\n' +
+            '예: https://프론트엔드주소/callback#token=eyJhbGci...',
     })
     @ApiQuery({
         name: 'code',
@@ -96,27 +100,9 @@ export class AuthController {
         type: String,
         example: 'aBcDeFgHiJkLmNoPqRsTuVwXyZ1234567890',
     })
-    @ApiQuery({
-        name: 'redirect_uri',
-        description:
-            '카카오 로그인 시 사용한 redirect_uri (선택, 없으면 BASE_URL 사용)',
-        required: false,
-        type: String,
-        example: 'https://프론트엔드주소/callback',
-    })
     @ApiResponse({
-        status: 200,
-        description: '로그인 성공 - JWT 액세스 토큰 반환',
-        schema: {
-            example: {
-                id: '1',
-                kakao_id: '4739186361',
-                nickname: '홍길동',
-                created_at: '2026-02-07T15:00:00.000Z',
-                access_token:
-                    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwia2FrYW9faWQiOiI0NzM5MTg2MzYxIiwiaWF0IjoxNzcwNDc3MTMwLCJleHAiOjE3NzEwODE5MzB9.-HhyhBuZezjKWewZIyqN5SZHHhfppt4AYgGg3pvsQeM',
-            },
-        },
+        status: 302,
+        description: '로그인 성공 - 프론트엔드로 리다이렉트 (JWT 토큰 포함)',
     })
     @ApiResponse({
         status: 400,
@@ -128,17 +114,40 @@ export class AuthController {
     })
     async kakaoLoginCallback(
         @Query('code') code: string,
-        @Query('redirect_uri') redirectUri?: string,
+        @Res() res: Response,
     ) {
-        // 프론트엔드가 전달한 redirect_uri 우선 사용, 없으면 백엔드 기본값
-        const finalRedirectUri =
-            redirectUri ||
-            `${this.configService.get<string>('BASE_URL')}/auth/kakao/login/callback`;
+        try {
+            // 백엔드의 callback URL을 redirect_uri로 사용
+            const backendCallbackUri = `${this.configService.get<string>('BASE_URL')}/auth/kakao/login/callback`;
 
-        return await this.authService.kakaoLogin({
-            authorizationCode: code,
-            redirectUri: finalRedirectUri,
-        });
+            // 카카오 로그인 처리 및 JWT 생성
+            const result = await this.authService.kakaoLogin({
+                authorizationCode: code,
+                redirectUri: backendCallbackUri,
+            });
+
+            // 프론트엔드 URL 가져오기
+            const frontendUrl =
+                this.configService.get<string>('FRONTEND_URL') ||
+                'http://localhost:3000';
+
+            // JWT 토큰을 URL 프래그먼트에 담아 프론트엔드로 리다이렉트
+            const redirectUrl = `${frontendUrl}/callback#token=${result.access_token}&userId=${result.id}&nickname=${encodeURIComponent(result.nickname)}`;
+
+            return res.redirect(redirectUrl);
+        } catch (error) {
+            // 에러 발생 시 프론트엔드 에러 페이지로 리다이렉트
+            const frontendUrl =
+                this.configService.get<string>('FRONTEND_URL') ||
+                'http://localhost:3000';
+            const errorMessage =
+                error instanceof Error
+                    ? error.message
+                    : '로그인 처리 중 오류가 발생했습니다';
+            const redirectUrl = `${frontendUrl}/callback#error=${encodeURIComponent(errorMessage)}`;
+
+            return res.redirect(redirectUrl);
+        }
     }
 
     @Post('goals')
