@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { NewsService } from './news.service';
 import {
     AnalyzeNewsDto,
@@ -26,8 +26,9 @@ export class NewsController {
     })
     async analyze(
         @Body() analyzeNewsDto: AnalyzeNewsDto,
+        @Request() req: { user: { id: string } },
     ): Promise<AnalyzeNewsResponseDto> {
-        return this.newsService.analyzeFromUrl(analyzeNewsDto.article_url);
+        return this.newsService.analyzeFromUrl(req.user.id, analyzeNewsDto.article_url);
     }
 
     @Get(':articleId')
