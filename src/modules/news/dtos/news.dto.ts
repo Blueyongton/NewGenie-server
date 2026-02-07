@@ -53,8 +53,8 @@ export class ArticleSentenceResponseDto {
     @ApiProperty({ description: '문장 순서 ID (0=제목)' })
     sentenceId: number;
     @ApiProperty({ 
-        description: '추출된 용어 설명', 
-        type: [TermExplanationDto] 
+        description: '추출된 용어 설명',
+        type: [TermExplanationDto]
     })
     explanations: TermExplanationDto[];
 }
@@ -71,4 +71,15 @@ export class AnalyzeNewsResponseDto {
         type: [ArticleSentenceResponseDto]
     })
     explanations: ArticleSentenceResponseDto[];
+}
+
+export class SentenceDetailResponseDto {
+    @ApiProperty({ description: 'DB 고유 ID' })
+    id: number;
+    @ApiProperty({ description: '문장 순서 ID (0=제목)' })
+    sentenceId: number;
+    @ApiProperty({ description: '용어 설명 배열', type: [TermExplanationDto] })
+    explanations: TermExplanationDto[];
+    @ApiProperty({ description: '상세 설명 생성 완료 여부' })
+    hasDetailedExplanations: boolean;
 }

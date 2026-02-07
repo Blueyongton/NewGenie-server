@@ -2,6 +2,7 @@ import {
     BadRequestException,
     GatewayTimeoutException,
     Injectable,
+    NotFoundException,
     ServiceUnavailableException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,7 +10,7 @@ import { News } from './entities/news.entity';
 import { Repository } from 'typeorm';
 import { LlmService } from 'src/common/llm/llm.service';
 import { ANALYZE_PROMPT } from 'src/common/prompts/analyze.prompt';
-import { AnalyzeNewsResponseDto } from './dtos/news.dto';
+import { AnalyzeNewsResponseDto, SentenceDetailResponseDto } from './dtos/news.dto';
 import { ArticleSentence as ArticleSentenceContent, GoalArticle } from './entities/goal-article.entity';
 import { ArticleSentence, TermExplanation } from './entities/article-sentence.entity';
 
@@ -72,7 +73,83 @@ export class NewsService {
             explanations: sentenceDetails,
         };
     }
+
+    async getSentenceDetail(
+        articleId: number,
+        sentenceId: number,
+        generateDetail: boolean = false,
+    ): Promise<SentenceDetailResponseDto> {
+        // 1. DB에서 문장 조회
+        const sentence = await this.articleSentenceRepository.findOne({
+            where: {
+                articlesId: articleId,
+                sentenceId: sentenceId,
+            }
+        })
+
+        if (!sentence) {
+            throw new NotFoundException(
+                `문장을 찾을 수 없습니다. (articleId: ${articleId}, sentenceId: ${sentenceId})`,
+            );
+        }
+
+        // 2. detail=true이고, 상세 설명이 아직 없으면 생성
+        const needsGeneration = this.hasNullDetailedExplain(sentence.explanations);
+        if (generateDetail && needsGeneration) {
+            console.log(`[상세 설명 생성 시작] articleId: ${articleId}, sentenceId: ${sentenceId}`);
+            const startTime = Date.now();
+            sentence.explanations = await this.generateDetailedExplanations(sentence.explanations);
+            await this.articleSentenceRepository.save(sentence);
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+            console.log(`[상세 설명 생성 완료] 소요 시간: ${elapsed}초`);
+        }
+
+        // 3. 응답 반환
+        return {
+            id: sentence.id,
+            sentenceId: sentence.sentenceId,
+            explanations: sentence.explanations,
+            hasDetailedExplanations: !this.hasNullDetailedExplain(sentence.explanations),
+        };
+    }
     
+    // 상세 설명 생성
+    private async generateDetailedExplanations(
+        explanations: TermExplanation[],
+    ): Promise<TermExplanation[]> {
+        const updatedExplanations = await Promise.all(
+            explanations.map(async (exp) => {
+                // 이미 상세 설명이 있으면 스킵
+                if (exp.detailed_explain !== null) {
+                    return exp;
+                }
+
+                // LLM으로 상세 설명 생성
+                try {
+                    const prompt = ANALYZE_PROMPT.GENERATE_DETAILED_EXPLAIN
+                        .replace('{keyword}', exp.keyword)
+                        .replace('{explain}', exp.explain);
+                    const detailedExplain = await this.llmService.invoke('', prompt);
+                    return {
+                        ...exp,
+                        detailed_explain: detailedExplain.trim(),
+                    };
+                } catch (error) {
+                    console.error(`상세 설명 생성 실패 (${exp.keyword}):`, error);
+                    return exp; // 실패 시 원본 유지
+                }
+            }),
+        );
+
+        return updatedExplanations;
+    }
+    
+    // detailed_explain이 null인 항목이 있는지 확인
+    private hasNullDetailedExplain(explanations: TermExplanation[]): boolean {
+        if (!explanations || explanations.length === 0) return false;
+        return explanations.some((exp) => exp.detailed_explain === null);
+    }
+
     // 문장별 용어 추출 및 저장
     private async extractTermsForSentences(
         articlesId: number,

@@ -1,12 +1,14 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
 import { NewsService } from './news.service';
 import {
     AnalyzeNewsDto,
     AnalyzeNewsResponseDto,
     CreateNewsDto,
+    SentenceDetailResponseDto,
 } from './dtos/news.dto';
-import { ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 
+@ApiTags('news')
 @Controller('news')
 export class NewsController {
     constructor(private readonly newsService: NewsService) {}
@@ -27,5 +29,32 @@ export class NewsController {
         @Body() analyzeNewsDto: AnalyzeNewsDto,
     ): Promise<AnalyzeNewsResponseDto> {
         return this.newsService.analyzeFromUrl(analyzeNewsDto.article_url);
+    }
+
+    @Get(':articleId/:sentenceId')
+    @ApiOperation({
+        summary: '문장 조회',
+        description: 'deatil=true 시 상세 설명을 생성하여 반환합니다. 이미 생성되어 있으면 조회만 합니다.'
+    })
+    @ApiParam({ name: 'articleId', description: '기사 ID'})
+    @ApiParam({ name: 'sentenceId', description: '문장 ID (0=제목)'})
+    @ApiQuery({
+        name: 'detail',
+        required: false,
+        type: Boolean,
+        description: '상세 설명 생성 여부 (true/false)'
+    })
+    @ApiResponse({ status: 200, type: SentenceDetailResponseDto })
+    async getSentenceDetail(
+        @Param('articleId', ParseIntPipe) articleId: number,
+        @Param('sentenceId', ParseIntPipe) sentenceId: number,
+        @Query('detail') detail?: string,
+    ): Promise<SentenceDetailResponseDto> {
+        const generateDatail = detail === 'true';
+        return this.newsService.getSentenceDetail(
+            articleId,
+            sentenceId,
+            generateDatail
+        )
     }
 }
