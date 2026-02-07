@@ -6,7 +6,6 @@ import {
     Body,
     UseGuards,
     Request,
-    ParseIntPipe,
 } from '@nestjs/common';
 import {
     ApiTags,
@@ -17,14 +16,17 @@ import {
     ApiBearerAuth,
 } from '@nestjs/swagger';
 import { QuizService } from './quiz.service';
+import { QuizSchedulerService } from './quiz-scheduler.service';
 import { SubmitAnswerDto } from './dtos/submit-answer.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { GenerateQuizResponseDto, SubmitQuizRequestDto, SubmitQuizResponseDto } from './dtos/quiz.dto';
 
 @ApiTags('퀴즈')
 @Controller('quiz')
 export class QuizController {
-    constructor(private readonly quizService: QuizService) {}
+    constructor(
+        private readonly quizService: QuizService,
+        private readonly quizSchedulerService: QuizSchedulerService,
+    ) {}
 
     @Get(':articleId')
     @ApiOperation({
@@ -69,34 +71,9 @@ export class QuizController {
     @UseGuards(JwtAuthGuard)
     @ApiBearerAuth('access-token')
     @ApiOperation({
-        summary: '기사 기반 O/X 퀴즈 생성',
-        description: '기사 내용을 기반으로 핵심 O/X 퀴즈를 생성합니다. 이미 퀴즈가 존재하면 기존 퀴즈를 반환합니다.'
-    })
-    @ApiParam({ 
-        name: 'articleId', 
-        description: '기사 ID', 
-        type: Number,
-        example: 1,
-    })
-    @ApiResponse({ 
-        status: 201, 
-        description: '퀴즈 생성 성공 또는 기존 퀴즈 반환', 
-        type: GenerateQuizResponseDto,
-    })
-    @ApiResponse({ 
-        status: 404, 
-        description: '기사를 찾을 수 없음',
-    })
-    async generate(
-        @Param('articleId', ParseIntPipe) articleId: number,
-    ): Promise<GenerateQuizResponseDto> {
-        return this.quizService.generateQuiz(articleId);
-    }
-
-    @Post(':articleId/submit')
-    @ApiOperation({
-        summary: '퀴즈 답안 제출',
-        description: '사용자의 O/X 답안을 제출하고 채점합니다. 결과에 따라 기사 상태가 업데이트됩니다.',
+        summary: '퀴즈 정답 제출',
+        description:
+            '기사 ID에 해당하는 퀴즈의 정답을 제출하고 결과를 확인합니다.',
     })
     @ApiParam({
         name: 'articleId',
@@ -144,22 +121,28 @@ export class QuizController {
             articleId,
             submitAnswerDto,
         );
-        type: Number,
-        example: 1,
+    }
+
+    @Post('create-daily-logs')
+    @UseGuards(JwtAuthGuard)
+    @ApiBearerAuth('access-token')
+    @ApiOperation({
+        summary: '수동으로 일일 Goal Log 생성 (테스트용)',
+        description:
+            '모든 사용자에 대해 오늘 날짜의 Goal Log를 생성합니다. 이미 생성된 경우 건너뜁니다.',
     })
     @ApiResponse({
-        status: 200,
-        description: '채점 완료',
-        type: SubmitQuizResponseDto,
+        status: 201,
+        description: 'Goal Log 생성 완료',
     })
     @ApiResponse({
-        status: 404,
-        description: '퀴즈를 찾을 수 없음',
+        status: 401,
+        description: '인증되지 않음',
     })
-    async submit(
-        @Param('articleId', ParseIntPipe) articleId: number,
-        @Body() dto: SubmitQuizRequestDto,
-    ): Promise<SubmitQuizResponseDto> {
-        return this.quizService.submitQuiz(articleId, dto.answer);
+    async createDailyLogs(): Promise<{ message: string }> {
+        await this.quizSchedulerService.createGoalLogsManually();
+        return {
+            message: 'Goal Log 생성 작업이 완료되었습니다. 로그를 확인하세요.',
+        };
     }
 }
