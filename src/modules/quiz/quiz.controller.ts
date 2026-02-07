@@ -139,7 +139,7 @@ export class QuizController {
         status: 401,
         description: '인증되지 않음',
     })
-    async createDailyLogs() {
+    async createDailyLogs(): Promise<{ message: string }> {
         await this.quizSchedulerService.createGoalLogsManually();
         return {
             message: 'Goal Log 생성 작업이 완료되었습니다. 로그를 확인하세요.',

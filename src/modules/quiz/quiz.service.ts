@@ -27,7 +27,7 @@ export class QuizService {
 
     async findByArticleId(articleId: string): Promise<QuizResponseDto> {
         const quiz = await this.quizRepository.findOne({
-            where: { article_id: articleId },
+            where: { articleId: Number(articleId) },
         });
 
         if (!quiz) {
@@ -48,7 +48,7 @@ export class QuizService {
     ): Promise<QuizResultResponseDto> {
         // 1. 퀴즈 조회
         const quiz = await this.quizRepository.findOne({
-            where: { article_id: articleId },
+            where: { articleId: Number(articleId) },
         });
 
         if (!quiz) {
