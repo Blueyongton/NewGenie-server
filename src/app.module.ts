@@ -23,7 +23,9 @@ import { LlmModule } from './common/llm/llm.module';
                 DB_DATABASE: Joi.string().required(),
                 DB_SYNCHRONIZE: Joi.boolean().default(false),
                 OPENROUTER_API_KEY: Joi.string().required(),
-                OPENROUTER_MODEL: Joi.string().required().default('openai/gpt-oss-120b'),
+                OPENROUTER_MODEL: Joi.string()
+                    .required()
+                    .default('openai/gpt-oss-120b'),
             }),
         }),
         TypeOrmModule.forRootAsync({

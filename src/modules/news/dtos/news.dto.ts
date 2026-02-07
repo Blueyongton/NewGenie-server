@@ -35,5 +35,5 @@ export class AnalyzeNewsResponseDto {
     @ApiProperty({ description: '기사 제목' })
     title: string;
     @ApiProperty({ description: '추출된 문장 배열', type: [SentenceDto] })
-    sentences: SentenceDto[];
+    contents: SentenceDto[];
 }
