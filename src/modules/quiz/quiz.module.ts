@@ -15,5 +15,14 @@ import { Goal } from './entities/goal.entity';
     controllers: [QuizController],
     providers: [QuizService],
     exports: [QuizService],
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Quiz } from './entities/quiz.entity';
+import { GoalArticle } from '../news/entities/goal-article.entity';
+import { LlmService } from 'src/common/llm/llm.service';
+
+@Module({
+    imports: [TypeOrmModule.forFeature([Quiz, GoalArticle])],
+    controllers: [QuizController],
+    providers: [QuizService, LlmService],
 })
 export class QuizModule {}

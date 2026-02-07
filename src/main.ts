@@ -8,6 +8,23 @@ import { HttpExceptionFilter } from './Interceptors/filters/http-error/http-erro
 async function bootstrap() {
     const app = await NestFactory.create(AppModule);
 
+    // CORS 설정
+    app.enableCors({
+        origin: [
+            // 로컬 개발 환경
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://127.0.0.1:3000',
+            // Vercel 배포 환경 (모든 Vercel 도메인 허용)
+            /\.vercel\.app$/,
+            // 프로덕션 커스텀 도메인이 있다면 추가
+            // 'https://yourdomain.com',
+        ],
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        credentials: true,
+        allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    });
+
     // 전역 Exception Filter 설정
     app.useGlobalFilters(new HttpExceptionFilter());
 
