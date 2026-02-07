@@ -17,8 +17,11 @@ export class ArticleSentence {
     id: number;
 
     @ManyToOne(() => GoalArticle, (article) => article.contents)
-    @JoinColumn({ name: 'article_id' })
+    @JoinColumn({ name: 'articles_id' })
     article: GoalArticle;
+
+    @Column({ name: 'articles_id' })
+    articlesId: number;
 
     @Column({ name: 'sentence_id' })
     sentenceId: number;

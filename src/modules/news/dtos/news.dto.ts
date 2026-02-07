@@ -29,6 +29,36 @@ export class SentenceDto {
     p: string;
 }
 
+// 추출
+export class TermExplanationDto {
+    @ApiProperty({ 
+        description: '용어 타입', 
+        enum: ['person', 'company', 'domain_terms'] 
+    })
+    type: 'person' | 'company' | 'domain_terms';
+    @ApiProperty({ description: '키워드', example: '이재용' })
+    keyword: string;
+    @ApiProperty({ description: '간단한 설명', example: '현재 삼성전자의 회장이다.' })
+    explain: string;
+    @ApiProperty({ 
+        description: '상세 설명', 
+        example: '이재용은 부회장 취임 이후...' 
+    })
+    detailed_explain: string;
+}
+
+export class ArticleSentenceResponseDto {
+    @ApiProperty({ description: '문장 고유 ID (DB)' })
+    id: number;
+    @ApiProperty({ description: '문장 순서 ID (0=제목)' })
+    sentenceId: number;
+    @ApiProperty({ 
+        description: '추출된 용어 설명', 
+        type: [TermExplanationDto] 
+    })
+    explanations: TermExplanationDto[];
+}
+
 export class AnalyzeNewsResponseDto {
     @ApiProperty({ description: '저장된 Goal Article ID' })
     articleId: number;
@@ -36,4 +66,9 @@ export class AnalyzeNewsResponseDto {
     title: string;
     @ApiProperty({ description: '추출된 문장 배열', type: [SentenceDto] })
     contents: SentenceDto[];
+    @ApiProperty({
+        description: '문장별 용어 설명',
+        type: [ArticleSentenceResponseDto]
+    })
+    explanations: ArticleSentenceResponseDto[];
 }

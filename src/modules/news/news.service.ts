@@ -10,7 +10,8 @@ import { Repository } from 'typeorm';
 import { LlmService } from 'src/common/llm/llm.service';
 import { ANALYZE_PROMPT } from 'src/common/prompts/analyze.prompt';
 import { AnalyzeNewsResponseDto } from './dtos/news.dto';
-import { ArticleSentence, GoalArticle } from './entities/goal-article.entity';
+import { ArticleSentence as ArticleSentenceContent, GoalArticle } from './entities/goal-article.entity';
+import { ArticleSentence, TermExplanation } from './entities/article-sentence.entity';
 
 @Injectable()
 export class NewsService {
@@ -20,6 +21,8 @@ export class NewsService {
         private llmService: LlmService,
         @InjectRepository(GoalArticle)
         private goalArticleRepository: Repository<GoalArticle>,
+        @InjectRepository(ArticleSentence)
+        private articleSentenceRepository: Repository<ArticleSentence>,
     ) {}
 
     async create(title: string) {
@@ -36,7 +39,7 @@ export class NewsService {
         const html = await this.fetchHtml(article_url);
 
         // 2. LLM으로 HTML에서 뉴스 본문 추출 및 문장 분리
-        const sentences = await this.llmService.invokeJson<ArticleSentence[]>(
+        const sentences = await this.llmService.invokeJson<ArticleSentenceContent[]>(
             ANALYZE_PROMPT.EXTRACT_NEWS,
             html,
         );
@@ -56,14 +59,52 @@ export class NewsService {
             title,
             contents: sentences,
         });
-        const saved = await this.goalArticleRepository.save(goalArticle);
+        const savedArticle = await this.goalArticleRepository.save(goalArticle);
 
-        // 6. 응답 반환
+        // 6. 각 문장별로 용어 추출 및 저장
+        const sentenceDetails = await this.extractTermsForSentences(savedArticle.id, sentences);
+
+        // 7. 응답 반환
         return {
-            articleId: saved.id,
-            title: saved.title,
-            contents: saved.contents,
+            articleId: savedArticle.id,
+            title: savedArticle.title,
+            contents: savedArticle.contents,
+            explanations: sentenceDetails,
         };
+    }
+
+    // 문장별 용어 추출 및 저장
+    private async extractTermsForSentences(
+        articlesId: number,
+        sentences: ArticleSentenceContent[],
+    ): Promise<ArticleSentence[]> {
+        const savedSentences: ArticleSentence[] = [];
+
+        for (const sentence of sentences) {
+            // LLM으로 용어 추출
+            let explanations: TermExplanation[] = [];
+
+            try {
+                explanations = await this.llmService.invokeJson<TermExplanation[]>(
+                    ANALYZE_PROMPT.EXTRACT_TERMS,
+                    sentence.p
+                );
+            } catch (error) {
+                console.error(`용어 추출 실패 (sentenceId: ${sentence.id}):`, error);
+                explanations = []
+            }
+
+            // ArticleSentence 저장
+            const articleSentence = this.articleSentenceRepository.create({
+                articlesId,
+                sentenceId: sentence.id,
+                explanations,
+            })
+
+            const saved = await this.articleSentenceRepository.save(articleSentence);
+            savedSentences.push(saved);
+        }
+        return savedSentences;
     }
 
     // HTML 페이지 가져오기 (fetch 버전)
