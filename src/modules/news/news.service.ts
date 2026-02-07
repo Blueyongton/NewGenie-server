@@ -7,7 +7,7 @@ import { Repository } from 'typeorm';
 export class NewsService {
     constructor(
         @InjectRepository(News)
-        private newsRepository: Repository<News>
+        private newsRepository: Repository<News>,
     ) {}
 
     async create(title: string) {
