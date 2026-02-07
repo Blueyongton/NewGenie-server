@@ -10,3 +10,18 @@ export class CreateNewsDto {
     @IsNotEmpty()
     title: string;
 }
+
+export class AnalyzeNewsDto {
+    @ApiProperty({
+        description: '분석할 뉴스 본문',
+        example: '오늘 한국은행이 기준금리를 0.25%p 인상했다...',
+    })
+    @IsString()
+    @IsNotEmpty()
+    content: string;
+}
+
+export class AnalyzeNewsResponseDto {
+    @ApiProperty({ description: 'LLM 분석 결과' })
+    analysis: string;
+}
