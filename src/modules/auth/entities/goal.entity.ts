@@ -2,14 +2,14 @@ import {
     Entity,
     PrimaryGeneratedColumn,
     Column,
-    CreateDateColumn,
     ManyToOne,
     JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { BaseEntity } from 'src/common/entities/base.entity';
 
 @Entity('Goals')
-export class Goal {
+export class Goal extends BaseEntity {
     @PrimaryGeneratedColumn('increment', { type: 'bigint' })
     id: string;
 
@@ -21,9 +21,6 @@ export class Goal {
 
     @Column({ type: 'int' })
     numbers: number;
-
-    @CreateDateColumn({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
-    created_at: Date;
 
     @ManyToOne(() => User)
     @JoinColumn({ name: 'user_id' })
