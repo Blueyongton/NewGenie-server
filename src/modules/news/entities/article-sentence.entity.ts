@@ -27,5 +27,5 @@ export class ArticleSentence {
     sentenceId: number;
 
     @Column({ type: 'jsonb', default: [] })
-    explanation: TermExplanation[];
+    explanations: TermExplanation[];
 }
