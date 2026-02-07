@@ -83,3 +83,19 @@ export class SentenceDetailResponseDto {
     @ApiProperty({ description: '상세 설명 생성 완료 여부' })
     hasDetailedExplanations: boolean;
 }
+
+export class GetArticleResponseDto {
+    @ApiProperty({ description: '기사 ID' })
+    id: number;
+    @ApiProperty({ description: '기사 제목' })
+    title: string;
+    @ApiProperty({ description: '원본 기사 URL' })
+    article_url: string;
+    @ApiProperty({ 
+        description: '읽기 상태', 
+        enum: ['WRONG', 'NOREAD', 'CORRECT'] 
+    })
+    status: string;
+    @ApiProperty({ description: '문장 배열', type: [SentenceDto] })
+    contents: SentenceDto[];
+}

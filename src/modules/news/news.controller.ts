@@ -4,6 +4,7 @@ import {
     AnalyzeNewsDto,
     AnalyzeNewsResponseDto,
     CreateNewsDto,
+    GetArticleResponseDto,
     SentenceDetailResponseDto,
 } from './dtos/news.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -35,6 +36,20 @@ export class NewsController {
         @Body() analyzeNewsDto: AnalyzeNewsDto,
     ): Promise<AnalyzeNewsResponseDto> {
         return this.newsService.analyzeFromUrl(analyzeNewsDto.article_url);
+    }
+
+    @Get(':articleId')
+    @ApiOperation({
+        summary: '기사 조회',
+        description: '기사 ID를 통해 기사 정보를 조회합니다.'
+    })
+    @ApiParam({ name: 'articleId', description: '기사 ID', type: Number })
+    @ApiResponse({ status: 200, type: GetArticleResponseDto })
+    @ApiResponse({ status: 404, description: '기사를 찾을 수 없습니다.' })
+    async getArticle(
+        @Param('articleId', ParseIntPipe) articleId: number,
+    ): Promise<GetArticleResponseDto> {
+        return this.newsService.getArticle(articleId);
     }
 
     @Get(':articleId/:sentenceId')
