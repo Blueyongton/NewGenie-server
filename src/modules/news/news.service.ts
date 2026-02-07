@@ -13,6 +13,8 @@ import { ANALYZE_PROMPT } from 'src/common/prompts/analyze.prompt';
 import { AnalyzeNewsResponseDto, GetArticleResponseDto, SentenceDetailResponseDto } from './dtos/news.dto';
 import { ArticleSentence as ArticleSentenceContent, GoalArticle } from './entities/goal-article.entity';
 import { ArticleSentence, TermExplanation } from './entities/article-sentence.entity';
+import { Goal } from '../auth/entities/goal.entity';
+import { GoalLog, GoalLogStatus } from '../auth/entities/goal-log.entity';
 
 @Injectable()
 export class NewsService {
@@ -24,6 +26,10 @@ export class NewsService {
         private goalArticleRepository: Repository<GoalArticle>,
         @InjectRepository(ArticleSentence)
         private articleSentenceRepository: Repository<ArticleSentence>,
+        @InjectRepository(Goal)
+        private goalRepository: Repository<Goal>,
+        @InjectRepository(GoalLog)
+        private goalLogRepository: Repository<GoalLog>,
     ) {}
 
     async create(title: string) {
@@ -31,41 +37,96 @@ export class NewsService {
         return this.newsRepository.save(news);
     }
 
+    // 오늘의 GoalLog 가져오거나 생성
+    private async getOrCreateTodayLog(userId: string): Promise<GoalLog> {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 1. 오늘의 log가 이미 있는지 확인
+        let log = await this.goalLogRepository.findOne({
+            where: { 
+                user_id: userId, 
+                date: today 
+            },
+        });
+
+        // 2. 없으면 새로 생성
+        if (!log) {
+            // 유저의 목표 설정 가져오기
+            const goal = await this.goalRepository.findOne({
+                where: { user_id: userId },
+            });
+            if (!goal) {
+                throw new NotFoundException('목표 설정이 없습니다. 먼저 /auth/goals에서 목표를 설정해주세요.');
+            }
+
+            log = this.goalLogRepository.create({
+                user_id: userId,
+                date: today,
+                target_count: goal.numbers,
+                current_count: 0,
+                status: GoalLogStatus.IN_PROGRESS,
+            });
+
+            log = await this.goalLogRepository.save(log);
+            console.log(`[GoalLog 생성] user_id: ${userId}, date: ${today.toISOString().split('T')[0]}`);
+        }
+
+        return log;
+    }
+
     async analyze(content: string): Promise<string> {
         return this.llmService.invoke(ANALYZE_PROMPT.SYSTEM, content);
     }
 
-    async analyzeFromUrl(article_url: string): Promise<AnalyzeNewsResponseDto> {
-        // 1. URL에서 HTML 가져오기
+    async analyzeFromUrl(userId: string, article_url: string): Promise<AnalyzeNewsResponseDto> {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // 1. GoalLog 가져오거나 생성
+        const goalLog = await this.getOrCreateTodayLog(userId);
+
+        // 2. URL에서 HTML 가져오기
         const html = await this.fetchHtml(article_url);
 
-        // 2. LLM으로 HTML에서 뉴스 본문 추출 및 문장 분리
+        // 3. LLM으로 HTML에서 뉴스 본문 추출 및 문장 분리
         const sentences = await this.llmService.invokeJson<ArticleSentenceContent[]>(
             ANALYZE_PROMPT.EXTRACT_NEWS,
             html,
         );
 
-        // 3. 유효성 검사
+        // 4. 유효성 검사
         if (!sentences || sentences.length === 0) {
             throw new BadRequestException('뉴스 본문을 추출할 수 없습니다.');
         }
 
-        // 4. 제목 추출 (id: 0)
+        // 5. 제목 추출 (id: 0)
         const titleSentence = sentences.find((s) => s.id === 0);
         const title = titleSentence?.p || '제목 없음';
 
-        // 5. DB에 저장
+        // 6. DB에 저장
         const goalArticle = this.goalArticleRepository.create({
+            user_id: userId,
+            log_id: goalLog.id,
+            date: today,
             article_url,
             title,
             contents: sentences,
         });
         const savedArticle = await this.goalArticleRepository.save(goalArticle);
 
-        // 6. 각 문장별로 용어 추출 및 저장
+        // 7. GoalLog 상태 업데이트
+        goalLog.current_count += 1;
+        if (goalLog.current_count >= goalLog.target_count) {
+            goalLog.status = GoalLogStatus.COMPLETED;
+            console.log(`[목표 달성!] user_id: ${userId}, current: ${goalLog.current_count}/${goalLog.target_count}`);
+        }
+        await this.goalLogRepository.save(goalLog);
+
+        // 8. 각 문장별로 용어 추출 및 저장
         const sentenceDetails = await this.extractTermsForSentences(savedArticle.id, sentences);
 
-        // 7. 응답 반환
+        // 9. 응답 반환
         return {
             articleId: savedArticle.id,
             title: savedArticle.title,
